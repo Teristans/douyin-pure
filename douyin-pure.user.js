@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         抖音网页版精简版
 // @namespace    https://github.com/Teristans/douyin-pure
-// @version      6.0.0
-// @description  精简抖音网页版：去顶栏与左侧栏、过滤广告与弹窗；搜索与频道收进右侧竖排图标列，与作者头像/点赞同列，不遮挡视频；智能把视频清晰度调到 1080；保留播放控制条、设置、点赞、评论、作者头像等互动元素。
+// @version      1.5.0
+// @description  精简抖音网页版：去顶栏与左侧栏、过滤广告与弹窗；搜索与频道收进贴右边缘的竖排图标列，与作者头像/点赞同列；智能把视频清晰度调到 1080；保留播放控制条、设置、点赞、评论、作者头像等互动元素。
 // @author       Teristans
 // @license      GPL-3.0-or-later
 // @homepage     https://github.com/Teristans/douyin-pure
@@ -34,9 +34,9 @@
  *    写入 1080P 档位 JSON 并轮询保持约 21s，不依赖菜单 DOM；(b) 若清晰度菜单
  *    [data-e2e="quality-selector"] 可见，按文本智能选 1080（没有 1080 就选不超过
  *    1080 的最高档）。用户手动切换后本脚本不再干预。
- * 5) 搜索与频道收进右侧竖排图标列：与抖音自己的作者头像/点赞/评论/收藏/分享同处一条竖线，
- *    位于这条操作列的顶部空白区（即作者头像上方），横向位置由实测的操作列中心动态对齐，
- *    因此不遮挡视频画面，也不压住任何原生互动按钮。搜索点击后向左展开输入框，回车即搜。
+ * 5) 搜索与频道收进右侧竖排图标列：与抖音自己的作者头像/点赞/评论/收藏/分享同处一条竖线。
+ *    整列固定贴右边缘（right:12px、top:76px），不做任何动态测量：不找操作列、不量图标中心、
+ *    不随换视频重排，所以位置一次到位后就不会再动。搜索点击后向左展开输入框，回车即搜。
  * 6) 暴露 diagnose() 供排查：在页面控制台运行 DouyinPure.diagnose() 打印真实 DOM 候选。
  */
 (function () {
@@ -182,9 +182,9 @@
     "}",
 
     /* ---------- 4. 右侧竖排图标列（搜索 + 频道） ----------
-       与抖音自己的作者头像/点赞/评论/收藏/分享排在同一条竖线上，
-       位置由脚本按实测的操作列坐标动态写入（见 positionRail），
-       这里只给兜底坐标：即使没找到操作列也贴右边缘，不会跑到视频中间。 */
+       与抖音自己的作者头像/点赞/评论/收藏/分享排在同一条竖线上。
+       位置就是这两个数，脚本不做任何测量或二次定位：贴右边缘、距顶 76px。
+       align-items: flex-end 让展开搜索时整列只向左长，圆形图标不会跟着位移。 */
     ".douyin-pure-rail {",
     "  position: fixed;",
     "  right: 12px;",
@@ -192,7 +192,7 @@
     "  z-index: 2147483000;",
     "  display: flex;",
     "  flex-direction: column;",
-    "  align-items: center;",
+    "  align-items: flex-end;",
     "  gap: 14px;",
     "  pointer-events: none;",
     "}",
@@ -249,34 +249,6 @@
     "  padding: 0;",
     "}",
 
-    /* 矮屏 / 操作列位置偏上时逐级收紧，保证整列能落在操作列上方而不贴到视频顶端 */
-    ".douyin-pure-rail.is-compact {",
-    "  gap: 10px;",
-    "}",
-    ".douyin-pure-rail.is-compact a,",
-    ".douyin-pure-rail.is-compact > .douyin-pure-search {",
-    "  width: 36px;",
-    "  height: 36px;",
-    "}",
-
-    ".douyin-pure-rail.is-compact svg {",
-    "  width: 20px;",
-    "  height: 20px;",
-    "}",
-    ".douyin-pure-rail.is-dense {",
-    "  gap: 8px;",
-    "}",
-    ".douyin-pure-rail.is-dense a,",
-    ".douyin-pure-rail.is-dense > .douyin-pure-search {",
-    "  width: 32px;",
-    "  height: 32px;",
-    "}",
-
-    ".douyin-pure-rail.is-dense svg {",
-    "  width: 18px;",
-    "  height: 18px;",
-    "}",
-
     /* 纯图标按钮的可读文本：只给读屏与测试用，视觉上不可见 */
     ".douyin-pure-sr {",
     "  position: absolute;",
@@ -309,7 +281,7 @@
     "  opacity: 1;",
     "  background: rgba(0, 0, 0, 0.5);",
     "}",
-    /* 展开态要压过 is-compact / is-dense 的宽度限制，故用同级特异性且后置声明 */
+    /* 展开态向左生长（整列贴右，容器宽度只增不减在右侧），输入框在左、按钮在右 */
     ".douyin-pure-rail .douyin-pure-search.is-open {",
     "  width: 216px;",
     "  opacity: 1;",
@@ -380,7 +352,7 @@
 
   /* ==================== 右侧竖排图标列 ==================== */
 
-  // 整列容器：搜索 + 4 个频道同处一条竖线，横向位置由 positionRail() 对齐抖音操作列。
+  // 整列容器：搜索 + 4 个频道同处一条竖线，位置固定由 CSS 决定（贴右边缘）。
   function mountRail() {
     var rail = document.getElementById("douyin-pure-rail");
     if (rail) return rail;
@@ -677,7 +649,6 @@
   }
 
   var autoTimer = null;
-  var railObserver = null;
 
   // 首页自动进入推荐：原生入口可能晚于脚本渲染，轮询等待，最多约 10 秒后走兜底 URL。
   function autoEnterRecommend() {
@@ -742,128 +713,6 @@
       nav.appendChild(link);
     });
     mountRail().appendChild(nav);
-  }
-
-  /* ==================== 与抖音操作列对齐 ==================== */
-
-  // 抖音右侧那条操作列（作者头像/点赞/评论/收藏/分享）没有稳定类名，
-  // 按「贴右边缘、窄、够高、内部有头像或互动按钮」这几个几何特征找。
-  // 找不到就返回 null，交回 CSS 的兜底坐标（贴右边缘 top:76px），不会跑偏到视频中间。
-  //
-  // 注意：只拿容器外框对不齐——容器内图标往往偏一侧（右侧留了数字和 padding），
-  // 所以再量一遍列内实际图标（img/svg/带 aria-label 的按钮）的水平中心，用它当基准。
-  function findActionColumn() {
-    var vw = window.innerWidth || document.documentElement.clientWidth || 0;
-    var vh = window.innerHeight || 0;
-    if (!vw || !vh) return null;
-    var nodes = document.querySelectorAll("div");
-    var best = null;
-    for (var i = 0; i < nodes.length; i += 1) {
-      var el = nodes[i];
-      if (isOurUi(el)) continue;
-      var rect = el.getBoundingClientRect();
-      if (rect.width < 34 || rect.width > 120) continue;
-      if (rect.height < 220) continue;
-      if (rect.right < vw - 90 || rect.right > vw + 4) continue;
-      if (rect.top < 0 || rect.bottom > vh + 4) continue;
-      // 高度越贴近「一整列」越可信；同分时取更靠右的
-      var score = rect.height;
-      if (!best || score > best.score) best = { rect: rect, score: score };
-    }
-    if (!best) return null;
-    return { rect: best.rect, centerX: iconCenterX(best.rect) };
-  }
-
-  // 量列内实际图标的水平中心；量不到（如纯文字列）就回落到容器中心。
-  function iconCenterX(rect) {
-    var containerCenter = rect.left + rect.width / 2;
-    var marks = [];
-    var all = document.querySelectorAll("img, svg, [aria-label]");
-    for (var i = 0; i < all.length; i += 1) {
-      var el = all[i];
-      if (isOurUi(el)) continue;
-      var b = el.getBoundingClientRect();
-      if (b.width < 10 || b.width > 72) continue;
-      if (b.height < 10 || b.height > 72) continue;
-      // 必须落在这一列的水平范围内
-      if (b.left < rect.left - 6 || b.left + b.width > rect.right + 6) continue;
-      if (b.top < rect.top - 6 || b.top + b.height > rect.bottom + 6) continue;
-      marks.push(b.left + b.width / 2);
-    }
-    if (marks.length < 2) return containerCenter;
-    var sum = 0;
-    for (var j = 0; j < marks.length; j += 1) sum += marks[j];
-    return sum / marks.length;
-  }
-
-  // 把整列放到操作列正上方：横向与列内图标居中对齐，纵向紧贴其顶部留 16px。
-  // 矮屏放不下时自动压缩密度（is-compact / is-dense），避免贴到视频最顶端显得突兀。
-  function positionRail() {
-    var rail = document.getElementById("douyin-pure-rail");
-    if (!rail) return;
-    var col = findActionColumn();
-    if (!col) {
-      rail.classList.remove("is-compact");
-      rail.classList.remove("is-dense");
-      rail.style.right = "";
-      rail.style.top = "";
-      return;
-    }
-    var vw = window.innerWidth || 0;
-    var centerX = col.centerX;
-    var space = col.rect.top - 8;
-    var height = rail.getBoundingClientRect().height || 0;
-
-    // 逐级收紧：默认 40px/gap14 -> 36px/gap10 -> 32px/gap8（尺寸尽量贴住原生图标）
-    rail.classList.remove("is-compact");
-    rail.classList.remove("is-dense");
-    height = rail.getBoundingClientRect().height || height;
-    if (height + 16 > space) {
-      rail.classList.add("is-compact");
-      height = rail.getBoundingClientRect().height || height * 0.88;
-    }
-    if (height + 12 > space) {
-      rail.classList.add("is-dense");
-      height = rail.getBoundingClientRect().height || height * 0.85;
-    }
-
-    // 横向按当前档位宽度居中：右偏移 = 视口宽 - 图标列中心 - 自身半宽
-    var size = rail.classList.contains("is-dense") ? 32 : rail.classList.contains("is-compact") ? 36 : 40;
-    var top = col.rect.top - height - 16;
-    if (top < 8) top = 8;
-    rail.style.right = Math.max(4, Math.round(vw - centerX - size / 2)) + "px";
-    rail.style.top = Math.round(top) + "px";
-  }
-
-  function watchRailPosition() {
-    var pending = false;
-    // 兼容最简环境（单测沙箱里可能没有 rAF / setTimeout / MutationObserver）
-    var raf = typeof window.requestAnimationFrame === "function"
-      ? function (fn) { window.requestAnimationFrame(fn); }
-      : function (fn) { fn(); };
-    function schedule() {
-      if (pending) return;
-      pending = true;
-      raf(function () {
-        pending = false;
-        positionRail();
-      });
-    }
-    if (typeof window.addEventListener === "function") {
-      window.addEventListener("resize", schedule);
-    }
-    // 抖音切换视频会重排操作列，观察 DOM 变化后重新对齐（rAF 已节流）。
-    if (typeof MutationObserver === "function") {
-      var root = document.body || document.documentElement;
-      if (root) {
-        railObserver = new MutationObserver(schedule);
-        railObserver.observe(root, { childList: true, subtree: true });
-      }
-    }
-    if (typeof window.setTimeout === "function") {
-      window.setTimeout(schedule, 400);
-      window.setTimeout(schedule, 1500);
-    }
   }
 
   /* ==================== 清晰度智能 1080 ==================== */
@@ -1055,9 +904,7 @@
     injectStyle(PURE_STYLE);
     mountSearch();
     mountChannels();
-    // 先对齐再观察：首次同步算一次，之后随布局变化/换视频重新对齐。
-    watchRailPosition();
-    positionRail();
+    // 图标列位置由 CSS 决定（贴右边缘），挂载完就结束，不再测量页面布局。
     autoEnterRecommend();
     if (AUTO_QUALITY_1080) {
       watchManualQuality();
@@ -1079,8 +926,6 @@
     mountChannels: mountChannels,
     mountRail: mountRail,
     icons: ICONS,
-    findActionColumn: findActionColumn,
-    positionRail: positionRail,
     currentChannelId: currentChannelId,
     isHomeLike: isHomeLike,
     shouldAutoEnter: shouldAutoEnter,

@@ -93,7 +93,7 @@ test("userscript metadata targets Douyin home with GPL license", () => {
   const metadata = source.match(/^\/\/ ==UserScript==[\s\S]*?^\/\/ ==\/UserScript==/m)?.[0];
   assert.ok(metadata, "userscript metadata block must exist");
   assert.match(metadata, /@name\s+抖音网页版精简版/);
-  assert.match(metadata, /@version\s+6\.0\.0/);
+  assert.match(metadata, /@version\s+1\.5\.0/);
   assert.match(metadata, /@namespace\s+https:\/\/github\.com\/Teristans\/douyin-pure/);
   assert.match(metadata, /@match\s+\*:\/\/www\.douyin\.com\/\*/);
   assert.match(metadata, /@grant\s+GM_addStyle/);
@@ -131,7 +131,7 @@ test("keeps player controls, settings and interaction widgets intact", () => {
   assert.match(css, /#douyin-right-container\s*\{[^}]*width:\s*100vw/);
 });
 
-test("mounts a bottom-left search dock with form and input", () => {
+test("mounts a right-edge search dock with form and input", () => {
   const { window, styles } = loadScript();
   assert.equal(styles.length, 1, "CSS injected once via GM_addStyle");
   const form = window.document.getElementById("douyin-pure-search");
@@ -474,7 +474,7 @@ test("diagnose() reports quality state", () => {
   assert.equal(gear.gearName, "高清 1080P");
 });
 
-// ===== 菜单移到左上角 =====
+// ===== 右侧竖排图标列：固定贴右边缘，不做二次定位 =====
 
 test("rail is anchored to the right edge and stacks vertically", () => {
   const { api } = loadScript();
@@ -518,31 +518,31 @@ test("channel links render an icon instead of plain text", () => {
   }
 });
 
-test("positionRail aligns to the native action column when one exists", () => {
-  const { api, window } = loadScript();
-  // 造一条抖音式的右侧操作列：贴右边缘、窄、够高
-  const column = window.document.createElement("div");
-  column.getBoundingClientRect = () => ({
-    left: 1200, right: 1264, top: 400, bottom: 860, width: 64, height: 460,
-  });
-  window.document.body.appendChild(column);
-  window.innerWidth = 1280;
-  window.innerHeight = 900;
-
-  api.positionRail();
-  const rail = window.document.getElementById("douyin-pure-rail");
-  // 横向：与操作列中心对齐（1280 - 1232 = 48，减半宽 20 → 28）
-  assert.equal(rail.style.right, "28px");
-  // 纵向：紧贴操作列上方 16px（rail 在 jsdom 里高度为 0）
-  assert.equal(rail.style.top, "384px");
+test("rail block pins right and top, and expands leftward with flex-end", () => {
+  const { api } = loadScript();
+  const css = api.style;
+  const railBlock = css.match(/\.douyin-pure-rail \{[^}]*\}/)[0];
+  assert.match(railBlock, /position:\s*fixed/);
+  assert.match(railBlock, /right:\s*12px/);
+  assert.match(railBlock, /top:\s*76px/);
+  assert.match(railBlock, /flex-direction:\s*column/);
+  // 右对齐：搜索展开时整列只向左长，圆形图标不会跟着位移
+  assert.match(railBlock, /align-items:\s*flex-end/);
+  assert.doesNotMatch(railBlock, /left\s*:/);
 });
 
-test("positionRail leaves CSS fallback alone when no action column is found", () => {
+test("rail position is static: nothing measures or re-anchors it", () => {
   const { api, window } = loadScript();
-  window.innerWidth = 1280;
-  window.innerHeight = 900;
-  api.positionRail();
+  const css = api.style;
+  // 动态定位整套（找操作列 / 量图标中心 / 按高度降档）已删除
+  assert.equal("positionRail" in api, false, "positionRail is gone");
+  assert.equal("findActionColumn" in api, false, "findActionColumn is gone");
+  assert.doesNotMatch(css, /is-compact|is-dense/);
+  assert.doesNotMatch(source, /MutationObserver/);
+  assert.doesNotMatch(source, /requestAnimationFrame/);
+  assert.doesNotMatch(source, /getBoundingClientRect/);
+  // 挂载后不写任何行内坐标，位置完全交由 CSS
   const rail = window.document.getElementById("douyin-pure-rail");
-  assert.equal(rail.style.right, "", "no inline override without a column");
+  assert.equal(rail.style.right, "");
   assert.equal(rail.style.top, "");
 });
