@@ -1,0 +1,18 @@
+{
+  "name": "douyin-pure",
+  "version": "6.0.0",
+  "private": true,
+  "description": "抖音网页版精简版 —— 去顶栏左栏、过滤广告，搜索与频道收进右侧竖排图标列，清晰度智能 1080",
+  "license": "GPL-3.0-or-later",
+  "author": "Teristans",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Teristans/douyin-pure.git"
+  },
+  "scripts": {
+    "test": "node --test tests/pure.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3"
+  }
+}
