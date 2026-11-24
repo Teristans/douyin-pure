@@ -106,13 +106,16 @@
   // 频道用实心图形（与抖音右侧操作列的心形/评论气泡风格一致），搜索用描边放大镜。
   var SVG_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
   var ICONS = {
+    // 放大镜用实心圆环（外圈 + 内圈 evenodd 挖空 + 手柄），视觉重量才和旁边的实心图标一致；
+    // 描边版在深色视频上明显偏淡。同理，外圈与内圈必须在同一条 d 里才会挖空。
     search: SVG_OPEN +
-      '<circle cx="10.5" cy="10.5" r="6.4" fill="none" stroke="currentColor" stroke-width="2"></circle>' +
-      '<path d="M15.4 15.4 20.4 20.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>' +
+      '<path d="M10.5 2.6a7.9 7.9 0 1 0 4.9 14.1l4.1 4.1 1.4-1.4-4.1-4.1A7.9 7.9 0 0 0 10.5 2.6zm0 3a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8z" fill="currentColor" fill-rule="evenodd"></path>' +
       "</svg>",
-    // 火焰：推荐流的「热」
+    // 火焰：推荐流的「热」。
+    // 注意：evenodd 只在**单个 path 内**算子路径嵌套，外焰 + 内焰必须合并进同一条 d，
+    // 拆成两个 <path> 会各自填满（踩过一次，渲染成实心饼）。
     recommend: SVG_OPEN +
-      '<path d="M12 2.6c.2 3.4-1.4 5.2-2.9 6.9C7.6 11.3 6.6 12.9 6.6 14.7a5.4 5.4 0 0 0 10.8 0c0-1.8-1-3.4-2.5-5.2-1.5-1.7-3.1-3.5-2.9-6.9z" fill="currentColor"></path>' +
+      '<path d="M13.5 0.67s0.74 2.65 0.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l0.03-0.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5 0.67z M11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-0.36 3.6-1.21 4.62-2.58 0.39 1.29 0.59 2.65 0.59 4.04 0 2.65-2.15 4.8-4.8 4.8z" fill="currentColor" fill-rule="evenodd"></path>' +
       "</svg>",
     // 四宫格：精选合集
     jingxuan: SVG_OPEN +
@@ -208,12 +211,13 @@
     "  padding: 0;",
     "  border: 0;",
     "  border-radius: 50%;",
-    "  background: rgba(0, 0, 0, 0.28);",
+    "  background: rgba(0, 0, 0, 0.42);",
     "  color: #fff;",
-    "  opacity: 0.6;",
+    "  opacity: 0.82;",
     "  cursor: pointer;",
     "  text-decoration: none;",
     "  box-sizing: border-box;",
+    "  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);",
     "  transition: opacity 0.18s ease, transform 0.18s ease, background 0.18s ease;",
     "}",
     ".douyin-pure-rail a:hover,",
@@ -254,9 +258,7 @@
     "  width: 36px;",
     "  height: 36px;",
     "}",
-    ".douyin-pure-rail.is-compact .douyin-pure-search button {",
-    "  flex-basis: 36px;",
-    "}",
+
     ".douyin-pure-rail.is-compact svg {",
     "  width: 20px;",
     "  height: 20px;",
@@ -269,9 +271,7 @@
     "  width: 32px;",
     "  height: 32px;",
     "}",
-    ".douyin-pure-rail.is-dense .douyin-pure-search button {",
-    "  flex-basis: 32px;",
-    "}",
+
     ".douyin-pure-rail.is-dense svg {",
     "  width: 18px;",
     "  height: 18px;",
@@ -299,9 +299,10 @@
     "  padding: 0;",
     "  overflow: hidden;",
     "  border-radius: 20px;",
-    "  background: rgba(0, 0, 0, 0.28);",
-    "  opacity: 0.6;",
+    "  background: rgba(0, 0, 0, 0.42);",
+    "  opacity: 0.82;",
     "  box-sizing: border-box;",
+    "  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);",
     "  transition: width 0.22s ease, opacity 0.18s ease, background 0.18s ease;",
     "}",
     ".douyin-pure-search:hover {",
@@ -316,28 +317,38 @@
     "  -webkit-backdrop-filter: blur(10px);",
     "  backdrop-filter: blur(10px);",
     "}",
+    /* 收起时必须连 padding 一起归零：留着 14px 左内边距会把右侧按钮挤出 36px 的圆圈，
+       图标会被 overflow:hidden 裁掉一半（实测踩过，放大镜只剩半个环）。 */
     ".douyin-pure-search input {",
-    "  flex: 1;",
+    "  flex: 1 1 0;",
     "  width: 0;",
     "  min-width: 0;",
     "  border: 0;",
     "  outline: 0;",
-    "  padding: 0 0 0 14px;",
+    "  padding: 0;",
     "  background: transparent;",
     "  color: #fff;",
     "  font-size: 13px;",
     "  opacity: 0;",
+    "  pointer-events: none;",
     "  transition: opacity 0.18s ease;",
     "}",
-    ".douyin-pure-search.is-open input {",
+    ".douyin-pure-rail .douyin-pure-search.is-open input {",
+    "  padding: 0 0 0 14px;",
     "  opacity: 1;",
+    "  pointer-events: auto;",
     "}",
     ".douyin-pure-search input::placeholder {",
     "  color: rgba(255, 255, 255, 0.7);",
     "}",
+    /* 收起时按钮占满整个圆圈（宽 100%），图标才是真正居中；
+       固定 40px 会在 36/32px 的圆圈里溢出，被 overflow 裁掉右侧、图标偏右。 */
     ".douyin-pure-search button {",
-    "  flex: 0 0 40px;",
+    "  flex: 0 0 100%;",
     "  background: transparent;",
+    "}",
+    ".douyin-pure-rail .douyin-pure-search.is-open button {",
+    "  flex: 0 0 40px;",
     "}",
     ".douyin-pure-search button:hover {",
     "  background: transparent;",
